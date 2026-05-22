@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOCREO API Key Manager</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f7fa;
+    --surface: #ffffff;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --danger: #dc2626;
+    --danger-hover: #b91c1c;
+    --success: #16a34a;
+    --text: #1e293b;
+    --text-muted: #64748b;
+    --border: #e2e8f0;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-lg: 0 10px 25px rgba(0,0,0,0.1);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  header {
+    width: 100%;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: var(--shadow);
+  }
+
+  header h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.01em; }
+
+  header .user-info {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-primary:disabled { background: #93b4f5; cursor: not-allowed; }
+  .btn-secondary { background: var(--border); color: var(--text); }
+  .btn-secondary:hover { background: #cbd5e1; }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-danger:hover { background: var(--danger-hover); }
+  .btn-small { padding: 6px 14px; font-size: 0.82rem; }
+
+  .container { width: 100%; max-width: 720px; padding: 32px 20px; }
+
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 28px;
+    margin-bottom: 20px;
+  }
+
+  .card h2 { font-size: 1.05rem; margin-bottom: 18px; }
+
+  label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  input[type="email"],
+  input[type="password"],
+  input[type="text"],
+  select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.15s;
+    background: var(--surface);
+  }
+  input:focus, select:focus { border-color: var(--primary); }
+
+  .field { margin-bottom: 16px; }
+
+  .error-msg {
+    background: #fef2f2;
+    color: var(--danger);
+    border: 1px solid #fecaca;
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: 0.88rem;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .error-msg.visible { display: block; }
+
+  .spinner {
+    display: inline-block;
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+  .spinner-dark {
+    border-color: #cbd5e1;
+    border-top-color: var(--primary);
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .asset-selector { margin-bottom: 20px; }
+
+  .device-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .device-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: border-color 0.15s;
+  }
+  .device-card:hover { border-color: var(--primary); }
+
+  .device-info { flex: 1; }
+  .device-name { font-weight: 600; font-size: 0.95rem; }
+  .device-meta { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; }
+
+  /* Existing API keys list */
+  .apikey-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+
+  .apikey-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    gap: 12px;
+  }
+
+  .apikey-info { flex: 1; min-width: 0; }
+  .apikey-name { font-weight: 600; font-size: 0.92rem; }
+  .apikey-detail { font-size: 0.78rem; color: var(--text-muted); margin-top: 3px; }
+  .apikey-detail span { margin-right: 12px; }
+
+  /* API Key display */
+  .api-key-display {
+    background: #1e293b;
+    color: #38bdf8;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.95rem;
+    padding: 16px;
+    border-radius: 8px;
+    word-break: break-all;
+    margin: 12px 0;
+    line-height: 1.5;
+  }
+
+  .warning-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #92400e;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 12px;
+  }
+
+  .key-meta {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-top: 8px;
+  }
+  .key-meta span { margin-right: 16px; }
+
+  .actions-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .copy-confirm {
+    color: var(--success);
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: none;
+  }
+  .copy-confirm.visible { display: inline; }
+
+  .test-result {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 14px;
+    display: none;
+  }
+  .test-result.visible { display: block; }
+
+  .test-reading { font-size: 2rem; font-weight: 700; color: var(--primary); }
+  .test-reading-meta { font-size: 0.82rem; color: var(--text-muted); margin-top: 4px; }
+
+  .section-divider {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  .generate-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+  }
+  .generate-row .field { margin-bottom: 0; flex: 1; }
+
+  .loading-placeholder {
+    text-align: center;
+    padding: 32px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  .modal-overlay.visible { display: flex; }
+
+  .modal-content {
+    background: var(--surface);
+    border-radius: 14px;
+    box-shadow: var(--shadow-lg);
+    padding: 32px;
+    max-width: 560px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal-content h2 { margin-bottom: 16px; }
+
+  .empty-state {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    padding: 12px 0;
+  }
+
+  .confirm-delete {
+    font-size: 0.82rem;
+    color: var(--danger);
+    margin-right: 4px;
+  }
+
+  /* Integration values table */
+  .integration-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+  }
+
+  .integration-table thead .it-label,
+  .integration-table thead .it-value {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding-bottom: 6px;
+  }
+
+  .integration-table td {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  .integration-table tr:last-child td { border-bottom: none; }
+
+  .it-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    width: 120px;
+  }
+
+  .it-value {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.85rem;
+    color: var(--text);
+    word-break: break-all;
+  }
+
+  .it-action {
+    width: 60px;
+    text-align: right;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>MOCREO API Key Manager</h1>
+  <div class="user-info" id="headerUserInfo" style="display:none;">
+    <span id="headerEmail"></span>
+    <button class="btn btn-secondary btn-small" onclick="logout()">Log Out</button>
+  </div>
+</header>
+
+<!-- Screen 1: Login -->
+<div class="container screen active" id="screenLogin">
+  <div class="card" style="max-width:420px; margin: 60px auto 0;">
+    <h2>Sign in to MOCREO</h2>
+    <div class="error-msg" id="loginError"></div>
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" required autocomplete="email" placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" required autocomplete="current-password" placeholder="Your password">
+      </div>
+      <button type="submit" class="btn btn-primary" id="loginBtn" style="width:100%;">Sign In</button>
+    </form>
+  </div>
+</div>
+
+<!-- Screen 2: Dashboard -->
+<div class="container screen" id="screenDashboard">
+
+  <!-- Assets & Devices card -->
+  <div class="card">
+    <h2>Your Assets</h2>
+    <div class="error-msg" id="dashError"></div>
+    <div class="asset-selector">
+      <label for="assetSelect">Select an Asset</label>
+      <select id="assetSelect" onchange="handleAssetChange()">
+        <option value="">-- Choose an asset --</option>
+      </select>
+    </div>
+
+    <div id="devicesArea" style="display:none;">
+      <label>Devices</label>
+      <div id="devicesList" class="device-list"></div>
+
+      <!-- Existing API Keys -->
+      <div class="section-divider">
+        <label>Existing API Keys</label>
+        <div id="apikeysList" class="apikey-list"></div>
+        <div id="apikeysLoading" style="display:none; padding:12px 0; color:var(--text-muted); font-size:0.88rem;">Loading keys...</div>
+      </div>
+
+      <!-- Generate new key -->
+      <div class="section-divider">
+        <label>Generate New API Key</label>
+        <div class="generate-row" style="margin-top:8px;">
+          <div class="field">
+            <input type="text" id="keyName" placeholder="e.g. My Integration Key">
+          </div>
+          <button class="btn btn-primary" onclick="handleGenerateKey()" id="generateBtn">Generate</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="devicesLoading" class="loading-placeholder" style="display:none;">
+      <span class="spinner spinner-dark" style="width:24px; height:24px; border-width:3px;"></span>
+      <p style="margin-top:12px;">Loading...</p>
+    </div>
+  </div>
+
+  <!-- Integration Values card -->
+  <div class="card" id="integrationCard" style="display:none;">
+    <h2>Integration Values</h2>
+    <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:16px;">
+      Copy these values into your monitoring or automation tool to read this asset's data.
+    </p>
+
+    <div class="integration-section">
+      <label>Per asset</label>
+      <table class="integration-table">
+        <tbody>
+          <tr>
+            <td class="it-label">Asset ID</td>
+            <td class="it-value" id="intgAssetId">--</td>
+            <td class="it-action"><button class="btn btn-secondary btn-small" onclick="copyText('intgAssetId')">Copy</button></td>
+          </tr>
+          <tr>
+            <td class="it-label">API Key</td>
+            <td class="it-value" id="intgApiKey"><span class="empty-state">Generate or select a key above</span></td>
+            <td class="it-action"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="integration-section" style="margin-top:18px;">
+      <label>Per sensor</label>
+      <table class="integration-table">
+        <thead>
+          <tr>
+            <td class="it-label">Device Name</td>
+            <td class="it-value">Device ID</td>
+            <td class="it-action"></td>
+          </tr>
+        </thead>
+        <tbody id="intgDevicesBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Standalone Test API Key card -->
+  <div class="card">
+    <h2>Test an API Key</h2>
+    <div class="error-msg" id="testError"></div>
+    <div class="field">
+      <label for="testApiKeyInput">API Key</label>
+      <input type="text" id="testApiKeyInput" placeholder="Paste your API key here (mok_...)">
+    </div>
+    <div style="display:flex; gap:12px;">
+      <div class="field" style="flex:1;">
+        <label for="testAssetSelect">Asset</label>
+        <select id="testAssetSelect" onchange="handleTestAssetChange()">
+          <option value="">-- Choose --</option>
+        </select>
+      </div>
+      <div class="field" style="flex:1;">
+        <label for="testDeviceSelect">Device</label>
+        <select id="testDeviceSelect">
+          <option value="">-- Choose --</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="handleTestKey()" id="testBtn">Test Key</button>
+    <div class="test-result" id="testResult">
+      <div class="test-reading" id="testReading"></div>
+      <div class="test-reading-meta" id="testReadingMeta"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal: API Key Result -->
+<div class="modal-overlay" id="keyModal">
+  <div class="modal-content">
+    <h2>API Key Generated</h2>
+    <div class="warning-banner">
+      <span style="font-size:1.2rem;">&#9888;&#65039;</span>
+      This key will only be shown once. Copy it now.
+    </div>
+    <div class="api-key-display" id="apiKeyDisplay"></div>
+    <div class="actions-row">
+      <button class="btn btn-primary btn-small" onclick="copyApiKey()">Copy to Clipboard</button>
+      <span class="copy-confirm" id="copyConfirm">Copied!</span>
+    </div>
+    <div class="key-meta" id="keyMeta"></div>
+    <div class="actions-row" style="margin-top:24px; justify-content:flex-end;">
+      <button class="btn btn-secondary" onclick="dismissKeyModal()">Done</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── State ──────────────────────────────────────────────────────
+  const state = {
+    accessToken: null,
+    refreshToken: null,
+    userEmail: null,
+    assets: [],
+    selectedAssetId: null,
+    devices: [],
+    apiKeys: [],
+    generatedApiKey: null,
+    testDevices: [],       // devices for the test card's selected asset
+  };
+
+  const API = 'https://api.mocreo.com';
+
+  // ── Helpers ────────────────────────────────────────────────────
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function showError(elId, msg) {
+    const el = document.getElementById(elId);
+    el.textContent = msg;
+    el.classList.add('visible');
+  }
+
+  function clearError(elId) {
+    const el = document.getElementById(elId);
+    el.textContent = '';
+    el.classList.remove('visible');
+  }
+
+  function setLoading(btnId, loading) {
+    const btn = document.getElementById(btnId);
+    if (loading) {
+      btn.disabled = true;
+      btn._origText = btn.innerHTML;
+      btn.innerHTML = '<span class="spinner"></span> Working...';
+    } else {
+      btn.disabled = false;
+      btn.innerHTML = btn._origText || btn.innerHTML;
+    }
+  }
+
+  function esc(str) {
+    const d = document.createElement('div');
+    d.textContent = String(str);
+    return d.innerHTML;
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '';
+    return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  // Copy text to the clipboard, falling back to execCommand for older/insecure contexts.
+  async function copyToClipboard(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;opacity:0;';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+  }
+
+  async function apiFetch(path, options = {}) {
+    const headers = { 'Content-Type': 'application/json', ...options.headers };
+    if (state.accessToken) {
+      headers['Authorization'] = `Bearer ${state.accessToken}`;
+    }
+    let resp;
+    try {
+      resp = await fetch(`${API}${path}`, { ...options, headers });
+    } catch (networkErr) {
+      console.error(`[apiFetch] Network error for ${options.method || 'GET'} ${path}:`, networkErr);
+      throw new Error(`Network error -- request to ${path} was blocked or failed. Check browser console for details.`);
+    }
+    if (resp.status === 401) {
+      logout();
+      throw new Error('Session expired. Please sign in again.');
+    }
+    let data;
+    try {
+      data = await resp.json();
+    } catch {
+      throw new Error(`Request failed (${resp.status}) -- response was not valid JSON.`);
+    }
+    if (!resp.ok) {
+      const errObj = data.errors?.[0];
+      const msg = (typeof errObj === 'object' ? errObj.message : errObj) || data.message || data.error || `Request failed (${resp.status})`;
+      console.error(`[apiFetch] API error for ${options.method || 'GET'} ${path}:`, data);
+      throw new Error(msg);
+    }
+    return data;
+  }
+
+  // ── Login ──────────────────────────────────────────────────────
+  async function handleLogin(e) {
+    e.preventDefault();
+    clearError('loginError');
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    if (!email || !password) return;
+
+    setLoading('loginBtn', true);
+    try {
+      const data = await apiFetch('/v1/users/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+      const result = data.result || data;
+      state.accessToken = result.access_token;
+      state.refreshToken = result.refresh_token;
+      state.userEmail = email;
+
+      document.getElementById('headerEmail').textContent = email;
+      document.getElementById('headerUserInfo').style.display = 'flex';
+      document.getElementById('password').value = '';
+
+      await loadAssets();
+      showScreen('screenDashboard');
+    } catch (err) {
+      showError('loginError', err.message);
+    } finally {
+      setLoading('loginBtn', false);
+    }
+  }
+
+  function logout() {
+    state.accessToken = null;
+    state.refreshToken = null;
+    state.userEmail = null;
+    state.assets = [];
+    state.selectedAssetId = null;
+    state.devices = [];
+    state.apiKeys = [];
+    state.generatedApiKey = null;
+    state.testDevices = [];
+    document.getElementById('headerUserInfo').style.display = 'none';
+    document.getElementById('email').value = '';
+    document.getElementById('password').value = '';
+    showScreen('screenLogin');
+  }
+
+  // ── Assets ─────────────────────────────────────────────────────
+  async function loadAssets() {
+    const data = await apiFetch('/v1/assets');
+    state.assets = data.result || data;
+
+    // Main asset dropdown
+    const sel = document.getElementById('assetSelect');
+    sel.innerHTML = '<option value="">-- Choose an asset --</option>';
+    state.assets.forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = a.id;
+      opt.textContent = a.displayName || a.name || a.id;
+      sel.appendChild(opt);
+    });
+
+    // Test card asset dropdown
+    const testSel = document.getElementById('testAssetSelect');
+    testSel.innerHTML = '<option value="">-- Choose --</option>';
+    state.assets.forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = a.id;
+      opt.textContent = a.displayName || a.name || a.id;
+      testSel.appendChild(opt);
+    });
+  }
+
+  // ── Devices ────────────────────────────────────────────────────
+  async function handleAssetChange() {
+    const assetId = document.getElementById('assetSelect').value;
+    clearError('dashError');
+    const devArea = document.getElementById('devicesArea');
+    const devLoading = document.getElementById('devicesLoading');
+
+    if (!assetId) {
+      devArea.style.display = 'none';
+      devLoading.style.display = 'none';
+      document.getElementById('integrationCard').style.display = 'none';
+      state.selectedAssetId = null;
+      state.devices = [];
+      state.apiKeys = [];
+      return;
+    }
+
+    state.selectedAssetId = assetId;
+    devArea.style.display = 'none';
+    devLoading.style.display = 'block';
+    document.getElementById('integrationCard').style.display = 'none';
+
+    try {
+      const [devData, keysData] = await Promise.all([
+        apiFetch(`/v1/assets/${assetId}/devices`),
+        apiFetch(`/v1/assets/${assetId}/apikeys`),
+      ]);
+      state.devices = devData.result || devData;
+      state.apiKeys = keysData.result || keysData;
+      renderDevices();
+      renderApiKeys();
+      renderIntegration();
+      devArea.style.display = 'block';
+    } catch (err) {
+      showError('dashError', err.message);
+    } finally {
+      devLoading.style.display = 'none';
+    }
+  }
+
+  function renderDevices() {
+    const list = document.getElementById('devicesList');
+    const devices = state.devices;
+    if (!devices.length) {
+      list.innerHTML = '<p class="empty-state">No devices found for this asset.</p>';
+      return;
+    }
+    list.innerHTML = devices.map(d => `
+      <div class="device-card">
+        <div class="device-info">
+          <div class="device-name">${esc(d.displayName || d.name || 'Unnamed')}</div>
+          <div class="device-meta">ID: ${esc(d.id)}${d.type ? ' &middot; Type: ' + esc(d.type) : ''}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── API Keys List ─────────────────────────────────────────────
+  function renderApiKeys() {
+    const list = document.getElementById('apikeysList');
+    if (!state.apiKeys.length) {
+      list.innerHTML = '<p class="empty-state">No API keys for this asset.</p>';
+      return;
+    }
+    list.innerHTML = state.apiKeys.map(k => `
+      <div class="apikey-card" id="apikey-${esc(k.prefix)}">
+        <div class="apikey-info">
+          <div class="apikey-name">${esc(k.displayName || 'Unnamed Key')}</div>
+          <div class="apikey-detail">
+            <span>Prefix: <strong>${esc(k.prefix)}</strong></span>
+            <span>Permissions: ${(k.permissions || []).map(esc).join(', ')}</span>
+          </div>
+          <div class="apikey-detail">
+            ${k.expiresAt ? `<span>Expires: ${formatDate(k.expiresAt)}</span>` : ''}
+            ${k.lastUsedAt ? `<span>Last used: ${formatDate(k.lastUsedAt)}</span>` : '<span>Never used</span>'}
+          </div>
+        </div>
+        <button class="btn btn-danger btn-small" onclick="handleDeleteKey('${esc(k.prefix)}')">Delete</button>
+      </div>
+    `).join('');
+  }
+
+  async function handleDeleteKey(prefix) {
+    if (!state.selectedAssetId) return;
+
+    // Simple confirmation
+    const card = document.getElementById(`apikey-${prefix}`);
+    if (card && !card.dataset.confirmed) {
+      card.dataset.confirmed = 'true';
+      const btn = card.querySelector('.btn-danger');
+      btn.insertAdjacentHTML('beforebegin', '<span class="confirm-delete">Are you sure?</span>');
+      btn.textContent = 'Confirm';
+      setTimeout(() => {
+        delete card.dataset.confirmed;
+        const confirmLabel = card.querySelector('.confirm-delete');
+        if (confirmLabel) confirmLabel.remove();
+        btn.textContent = 'Delete';
+      }, 4000);
+      return;
+    }
+
+    clearError('dashError');
+    try {
+      await apiFetch(`/v1/assets/${state.selectedAssetId}/apikeys/${prefix}`, {
+        method: 'DELETE',
+      });
+      state.apiKeys = state.apiKeys.filter(k => k.prefix !== prefix);
+      renderApiKeys();
+    } catch (err) {
+      showError('dashError', err.message);
+    }
+  }
+
+  // ── Generate API Key ──────────────────────────────────────────
+  async function handleGenerateKey() {
+    if (!state.selectedAssetId) return;
+    clearError('dashError');
+    const keyName = document.getElementById('keyName').value.trim() || 'API Key';
+
+    setLoading('generateBtn', true);
+    try {
+      const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+      const data = await apiFetch(`/v1/assets/${state.selectedAssetId}/apikeys`, {
+        method: 'POST',
+        body: JSON.stringify({
+          displayName: keyName,
+          permissions: ['device.read'],
+          expiresAt: expiresAt,
+        }),
+      });
+      const result = data.result || data;
+      state.generatedApiKey = result.key;
+
+      // Refresh the keys list
+      try {
+        const keysData = await apiFetch(`/v1/assets/${state.selectedAssetId}/apikeys`);
+        state.apiKeys = keysData.result || keysData;
+        renderApiKeys();
+      } catch { /* non-critical */ }
+
+      showKeyModal(result);
+      updateIntegrationApiKey(result.key);
+      document.getElementById('keyName').value = '';
+    } catch (err) {
+      showError('dashError', err.message);
+    } finally {
+      setLoading('generateBtn', false);
+    }
+  }
+
+  function showKeyModal(keyResult) {
+    document.getElementById('apiKeyDisplay').textContent = keyResult.key;
+
+    let metaHtml = '';
+    if (keyResult.displayName) metaHtml += `<span><strong>Name:</strong> ${esc(keyResult.displayName)}</span>`;
+    if (keyResult.prefix) metaHtml += `<span><strong>Prefix:</strong> ${esc(keyResult.prefix)}</span>`;
+    if (keyResult.expiresAt) metaHtml += `<span><strong>Expires:</strong> ${formatDate(keyResult.expiresAt)}</span>`;
+    if (keyResult.permissions?.length) metaHtml += `<span><strong>Permissions:</strong> ${keyResult.permissions.map(esc).join(', ')}</span>`;
+    document.getElementById('keyMeta').innerHTML = metaHtml;
+
+    document.getElementById('copyConfirm').classList.remove('visible');
+    document.getElementById('keyModal').classList.add('visible');
+  }
+
+  function dismissKeyModal() {
+    document.getElementById('keyModal').classList.remove('visible');
+    state.generatedApiKey = null;
+  }
+
+  // ── Copy ───────────────────────────────────────────────────────
+  async function copyApiKey() {
+    if (!state.generatedApiKey) return;
+    await copyToClipboard(state.generatedApiKey);
+    const el = document.getElementById('copyConfirm');
+    el.classList.add('visible');
+    setTimeout(() => el.classList.remove('visible'), 2500);
+  }
+
+  // ── Integration Values ──────────────────────────────────────────
+  function renderIntegration() {
+    const card = document.getElementById('integrationCard');
+    card.style.display = 'block';
+
+    // Asset ID
+    document.getElementById('intgAssetId').textContent = state.selectedAssetId;
+
+    // API Key -- show prompt if no keys exist, otherwise remind to use saved key
+    const keyEl = document.getElementById('intgApiKey');
+    if (state.apiKeys.length) {
+      const latest = state.apiKeys[0];
+      keyEl.innerHTML = `<span style="color:var(--text-muted); font-family:inherit; font-size:0.83rem;">Use saved key with prefix </span><strong>${esc(latest.prefix)}</strong>`;
+    } else {
+      keyEl.innerHTML = '<span class="empty-state">No keys yet -- generate one above</span>';
+    }
+
+    // Devices
+    const tbody = document.getElementById('intgDevicesBody');
+    const devices = state.devices;
+    if (!devices.length) {
+      tbody.innerHTML = '<tr><td colspan="3" class="empty-state">No devices</td></tr>';
+      return;
+    }
+    tbody.innerHTML = devices.map(d => `
+      <tr>
+        <td class="it-label">${esc(d.displayName || d.name || 'Unnamed')}</td>
+        <td class="it-value" id="intgDev-${esc(d.id)}">${esc(d.id)}</td>
+        <td class="it-action"><button class="btn btn-secondary btn-small" onclick="copyText('intgDev-${esc(d.id)}')">Copy</button></td>
+      </tr>
+    `).join('');
+  }
+
+  function updateIntegrationApiKey(fullKey) {
+    const keyEl = document.getElementById('intgApiKey');
+    if (!keyEl) return;
+    keyEl.textContent = fullKey;
+  }
+
+  async function copyText(elId) {
+    const text = document.getElementById(elId).textContent.trim();
+    if (!text) return;
+    await copyToClipboard(text);
+    // Brief visual feedback on the button
+    const btn = document.getElementById(elId)?.closest('tr')?.querySelector('.btn');
+    if (btn) {
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.style.color = 'var(--success)';
+      setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1500);
+    }
+  }
+
+  // ── Test API Key (standalone) ─────────────────────────────────
+  async function handleTestAssetChange() {
+    const assetId = document.getElementById('testAssetSelect').value;
+    const devSel = document.getElementById('testDeviceSelect');
+    devSel.innerHTML = '<option value="">-- Choose --</option>';
+    state.testDevices = [];
+
+    if (!assetId) return;
+
+    try {
+      const data = await apiFetch(`/v1/assets/${assetId}/devices`);
+      state.testDevices = data.result || data;
+      state.testDevices.forEach(d => {
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.textContent = d.displayName || d.name || d.id;
+        devSel.appendChild(opt);
+      });
+    } catch (err) {
+      showError('testError', err.message);
+    }
+  }
+
+  async function handleTestKey() {
+    clearError('testError');
+    const apiKey = document.getElementById('testApiKeyInput').value.trim();
+    const assetId = document.getElementById('testAssetSelect').value;
+    const deviceId = document.getElementById('testDeviceSelect').value;
+
+    if (!apiKey) { showError('testError', 'Please enter an API key.'); return; }
+    if (!assetId) { showError('testError', 'Please select an asset.'); return; }
+    if (!deviceId) { showError('testError', 'Please select a device.'); return; }
+
+    const asset = state.assets.find(a => a.id === assetId);
+    const device = state.testDevices.find(d => d.id === deviceId);
+    const tz = asset?.config?.tz || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    const now = Date.now();
+    const oneHourAgo = now - 3600000;
+
+    setLoading('testBtn', true);
+    document.getElementById('testResult').classList.remove('visible');
+
+    try {
+      const params = new URLSearchParams({
+        field: 'temperature',
+        from: String(oneHourAgo),
+        to: String(now),
+        limit: '1',
+        tz: tz,
+      });
+
+      const resp = await fetch(
+        `${API}/v1/assets/${assetId}/devices/${deviceId}/history?${params}`,
+        { headers: { 'Accept': 'application/json', 'X-API-Key': apiKey } }
+      );
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        const errMsg = errData.errors?.[0]?.message || errData.errors?.[0] || errData.message;
+        throw new Error(errMsg || `Test failed (${resp.status})`);
+      }
+      const data = await resp.json();
+      const samples = data.result?.data || data.data || [];
+
+      if (!samples.length) {
+        document.getElementById('testReading').textContent = 'No data';
+        document.getElementById('testReadingMeta').textContent = 'No readings found in the last hour.';
+      } else {
+        const s = samples[0];
+        const unit = s.unit || asset?.config?.units?.temperature || 'F';
+        const time = new Date(s.time).toLocaleString(undefined, { timeZone: tz });
+        document.getElementById('testReading').textContent = `${s.value} ${unit}`;
+        document.getElementById('testReadingMeta').textContent =
+          `${esc(device?.displayName || device?.name || deviceId)} -- ${time}`;
+      }
+      document.getElementById('testResult').classList.add('visible');
+    } catch (err) {
+      document.getElementById('testReading').textContent = 'Error';
+      document.getElementById('testReadingMeta').textContent = err.message;
+      document.getElementById('testResult').classList.add('visible');
+    } finally {
+      setLoading('testBtn', false);
+    }
+  }
+
+  // ── Modal events ──────────────────────────────────────────────
+  document.getElementById('keyModal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) dismissKeyModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.getElementById('keyModal').classList.contains('visible')) {
+      dismissKeyModal();
+    }
+  });
+</script>
+
+</body>
+</html>
