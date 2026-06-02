@@ -566,6 +566,20 @@
     return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
   }
 
+  function formatTemperature(rawCentiCelsius, unitSetting) {
+    const celsius = rawCentiCelsius / 100;
+    const prefersF = /f|℉/i.test(unitSetting || 'C');
+    const value = prefersF ? celsius * 9 / 5 + 32 : celsius;
+    return `${value.toFixed(1)} ${prefersF ? '℉' : '℃'}`;
+  }
+
+  function lastSeen(dev) {
+    const ms = dev.attributes?.lastOnline
+      ? dev.attributes.lastOnline * 1000
+      : (dev.updatedAt || dev.properties?.updatedAt);
+    return ms ? new Date(ms).toLocaleString() : '';
+  }
+
   // Copy text to the clipboard, falling back to execCommand for older/insecure contexts.
   async function copyToClipboard(text) {
     try {
@@ -952,25 +966,13 @@
 
     const asset = state.assets.find(a => a.id === assetId);
     const device = state.testDevices.find(d => d.id === deviceId);
-    const tz = asset?.config?.tz || Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-    const now = Date.now();
-    const oneHourAgo = now - 3600000;
 
     setLoading('testBtn', true);
     document.getElementById('testResult').classList.remove('visible');
 
     try {
-      const params = new URLSearchParams({
-        field: 'temperature',
-        from: String(oneHourAgo),
-        to: String(now),
-        limit: '1',
-        tz: tz,
-      });
-
       const resp = await fetch(
-        `${API}/v1/assets/${assetId}/devices/${deviceId}/history?${params}`,
+        `${API}/v1/assets/${assetId}/devices/${deviceId}`,
         { headers: { 'Accept': 'application/json', 'X-API-Key': apiKey } }
       );
       if (!resp.ok) {
@@ -979,18 +981,17 @@
         throw new Error(errMsg || `Test failed (${resp.status})`);
       }
       const data = await resp.json();
-      const samples = data.result?.data || data.data || [];
+      const dev = data.result || data;
+      const label = dev.attributes?.labels?.displayName || device?.displayName || device?.name || deviceId;
+      const raw = dev.properties?.temperature;
 
-      if (!samples.length) {
+      if (raw === undefined || raw === null) {
         document.getElementById('testReading').textContent = 'No data';
-        document.getElementById('testReadingMeta').textContent = 'No readings found in the last hour.';
+        document.getElementById('testReadingMeta').textContent = `${label} has no temperature reading.`;
       } else {
-        const s = samples[0];
-        const unit = s.unit || asset?.config?.units?.temperature || 'F';
-        const time = new Date(s.time).toLocaleString(undefined, { timeZone: tz });
-        document.getElementById('testReading').textContent = `${s.value} ${unit}`;
-        document.getElementById('testReadingMeta').textContent =
-          `${esc(device?.displayName || device?.name || deviceId)} -- ${time}`;
+        const time = lastSeen(dev);
+        document.getElementById('testReading').textContent = formatTemperature(raw, asset?.config?.units?.temperature);
+        document.getElementById('testReadingMeta').textContent = time ? `${label} -- ${time}` : label;
       }
       document.getElementById('testResult').classList.add('visible');
     } catch (err) {

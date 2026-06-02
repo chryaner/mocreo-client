@@ -66,6 +66,7 @@ The API uses two different auth schemes depending on what you're doing:
 | Create API key    | `POST /v1/assets/{assetId}/apikeys` - see body below                             |
 | Delete API key    | `DELETE /v1/assets/{assetId}/apikeys/{prefix}`                                   |
 | Device history    | `GET /v1/assets/{assetId}/devices/{deviceId}/history` - uses `X-API-Key`         |
+| Device details    | `GET /v1/assets/{assetId}/devices/{deviceId}` - uses `X-API-Key`                 |
 
 **Create key body** - all three fields are required:
 
@@ -82,6 +83,12 @@ never be retrieved again. Keys are referenced by their `prefix` for deletion.
 
 **Device history** uses the `X-API-Key` header (not bearer auth) and these query params:
 `field=temperature`, `from=<unix_ms>`, `to=<unix_ms>`, `limit=1`, `tz=<IANA timezone>`.
+
+**Device details** uses the `X-API-Key` header (not bearer auth). The device's `properties` hold
+the latest values: `temperature` is in hundredths of a degree Celsius (e.g. `2300` = 23.0 °C).
+"Test a key" reads it, divides by 100, and converts to the asset's display unit
+(`config.units.temperature`). For the timestamp it uses `attributes.lastOnline` (when the device
+was last seen, in seconds) rather than `updatedAt` (which only changes when the value changes).
 
 ## Getting your sensors online
 
