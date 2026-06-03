@@ -244,6 +244,17 @@
   .test-reading { font-size: 2rem; font-weight: 700; color: var(--primary); }
   .test-reading-meta { font-size: 0.82rem; color: var(--text-muted); margin-top: 4px; }
 
+  .test-properties { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .test-properties .tp-title {
+    font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 8px;
+  }
+  .test-properties .tp-item {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.82rem; color: var(--text-muted); padding: 2px 0;
+  }
+  .test-properties .tp-item span { color: var(--text); }
+
   .section-divider {
     margin-top: 20px;
     padding-top: 20px;
@@ -484,6 +495,7 @@
     <div class="test-result" id="testResult">
       <div class="test-reading" id="testReading"></div>
       <div class="test-reading-meta" id="testReadingMeta"></div>
+      <div class="test-properties" id="testProperties"></div>
     </div>
   </div>
 
@@ -578,6 +590,26 @@
       ? dev.attributes.lastOnline * 1000
       : (dev.updatedAt || dev.properties?.updatedAt);
     return ms ? new Date(ms).toLocaleString() : '';
+  }
+
+  function flattenProps(obj, prefix = '') {
+    return Object.entries(obj).flatMap(([k, v]) => {
+      const key = prefix ? `${prefix}.${k}` : k;
+      if (Array.isArray(v)) return [[key, JSON.stringify(v)]];
+      if (v && typeof v === 'object') return flattenProps(v, key);
+      return [[key, v]];
+    });
+  }
+
+  function renderTestProperties(dev) {
+    const el = document.getElementById('testProperties');
+    const props = { ...(dev.properties || {}) };
+    delete props.temperature;
+    delete props.updatedAt;
+    const items = flattenProps(props);
+    if (!items.length) { el.innerHTML = ''; return; }
+    el.innerHTML = '<div class="tp-title">Other values reported by this device</div>' +
+      items.map(([k, v]) => `<div class="tp-item">${esc(k)}: <span>${esc(v)}</span></div>`).join('');
   }
 
   // Copy text to the clipboard, falling back to execCommand for older/insecure contexts.
@@ -984,19 +1016,18 @@
       const dev = data.result || data;
       const label = dev.attributes?.labels?.displayName || device?.displayName || device?.name || deviceId;
       const raw = dev.properties?.temperature;
+      const time = lastSeen(dev);
 
-      if (raw === undefined || raw === null) {
-        document.getElementById('testReading').textContent = 'No data';
-        document.getElementById('testReadingMeta').textContent = `${label} has no temperature reading.`;
-      } else {
-        const time = lastSeen(dev);
-        document.getElementById('testReading').textContent = formatTemperature(raw, asset?.config?.units?.temperature);
-        document.getElementById('testReadingMeta').textContent = time ? `${label} -- ${time}` : label;
-      }
+      const hasTemp = raw !== undefined && raw !== null;
+      document.getElementById('testReading').textContent =
+        hasTemp ? formatTemperature(raw, asset?.config?.units?.temperature) : 'No temperature';
+      document.getElementById('testReadingMeta').textContent = time ? `${label} -- ${time}` : label;
+      renderTestProperties(dev);
       document.getElementById('testResult').classList.add('visible');
     } catch (err) {
       document.getElementById('testReading').textContent = 'Error';
       document.getElementById('testReadingMeta').textContent = err.message;
+      document.getElementById('testProperties').innerHTML = '';
       document.getElementById('testResult').classList.add('visible');
     } finally {
       setLoading('testBtn', false);

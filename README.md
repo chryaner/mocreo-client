@@ -24,7 +24,8 @@ your data. This page covers that. Use it live at
 - Create, list, and delete API keys per asset. A new key is shown only once, with a copy button,
   so you'll want to copy it before closing the dialog.
 - Copy the Asset ID and per-sensor Device IDs for use in another tool.
-- Test a key by fetching the latest temperature reading from a sensor.
+- Test a key by fetching a device's latest values - the temperature reading, plus everything
+  else it reports (humidity, battery, signal, and a hub's network info).
 
 ## Quick start
 
